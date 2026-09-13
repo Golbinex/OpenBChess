@@ -1,0 +1,3 @@
+[submodule "src/assets/BChess"]
+	path = src/assets/BChess
+	url = git@github.com:Golbinex/assets_BChess.git
