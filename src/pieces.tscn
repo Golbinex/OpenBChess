@@ -1,0 +1,91 @@
+[gd_scene format=3 uid="uid://d1d334c26d3vl"]
+
+[ext_resource type="Script" uid="uid://codv2qyhabaih" path="res://pieces.gd" id="1"]
+[ext_resource type="SpriteFrames" uid="uid://1j8oes5x8rg8" path="res://assets/BChess/sprites/pieces/black/bishop/sprite_frames.tres" id="2_mjogo"]
+[ext_resource type="SpriteFrames" uid="uid://clxyr5jsufy5s" path="res://assets/BChess/sprites/pieces/black/king/sprite_frames.tres" id="3_as0px"]
+[ext_resource type="SpriteFrames" uid="uid://7d8lpyntp6fu" path="res://assets/BChess/sprites/pieces/black/knight/sprite_frames.tres" id="4_w8okt"]
+[ext_resource type="SpriteFrames" uid="uid://bhu1gvlmmewdu" path="res://assets/BChess/sprites/pieces/black/pawn/new_sprite_frames.tres" id="5_aya46"]
+[ext_resource type="SpriteFrames" uid="uid://bdfm0asb667ni" path="res://assets/BChess/sprites/pieces/black/queen/sprite_frames.tres" id="6_p8b1i"]
+[ext_resource type="SpriteFrames" uid="uid://bx7d7ojgie26l" path="res://assets/BChess/sprites/pieces/black/rook/sprite_frames.tres" id="7_nbd10"]
+[ext_resource type="SpriteFrames" uid="uid://blbta7wv56kw2" path="res://assets/BChess/sprites/pieces/white/bishop/sprite_frames.tres" id="8_s3t1s"]
+[ext_resource type="SpriteFrames" uid="uid://b2bfvo74si087" path="res://assets/BChess/sprites/pieces/white/king/sprite_frames.tres" id="9_15y27"]
+[ext_resource type="SpriteFrames" uid="uid://cyhv60j2npdq5" path="res://assets/BChess/sprites/pieces/white/knight/sprite_frames.tres" id="10_trs74"]
+[ext_resource type="SpriteFrames" uid="uid://bjxy3jws58my" path="res://assets/BChess/sprites/pieces/white/pawn/sprite_frames.tres" id="11_r7mns"]
+[ext_resource type="SpriteFrames" uid="uid://c30o30jv1e6c3" path="res://assets/BChess/sprites/pieces/white/queen/sprite_frames.tres" id="12_7kt1i"]
+[ext_resource type="SpriteFrames" uid="uid://ds0i2a63llj2j" path="res://assets/BChess/sprites/pieces/white/rook/sprite_frames.tres" id="13_biv2x"]
+
+[node name="Pieces" type="GridContainer" unique_id=1161903911]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -782.0
+offset_top = 26.0
+offset_right = -652.0
+offset_bottom = 26.0
+grow_horizontal = 2
+grow_vertical = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+columns = 6
+script = ExtResource("1")
+
+[node name="blackBishop" type="AnimatedSprite2D" parent="." unique_id=1200294505]
+position = Vector2(0, 1)
+sprite_frames = ExtResource("2_mjogo")
+centered = false
+
+[node name="blackKing" type="AnimatedSprite2D" parent="." unique_id=1444114706]
+position = Vector2(64, 0)
+sprite_frames = ExtResource("3_as0px")
+centered = false
+
+[node name="blackKnight" type="AnimatedSprite2D" parent="." unique_id=1831481198]
+position = Vector2(128, 0)
+sprite_frames = ExtResource("4_w8okt")
+centered = false
+
+[node name="blackPawn" type="AnimatedSprite2D" parent="." unique_id=142194772]
+position = Vector2(192, 0)
+sprite_frames = ExtResource("5_aya46")
+centered = false
+
+[node name="blackQueen" type="AnimatedSprite2D" parent="." unique_id=469037649]
+position = Vector2(256, 0)
+sprite_frames = ExtResource("6_p8b1i")
+animation = &"moveUp"
+centered = false
+
+[node name="blackRook" type="AnimatedSprite2D" parent="." unique_id=1078650775]
+position = Vector2(320, 0)
+sprite_frames = ExtResource("7_nbd10")
+centered = false
+
+[node name="whiteBishop" type="AnimatedSprite2D" parent="." unique_id=1535789539]
+position = Vector2(384, 0)
+sprite_frames = ExtResource("8_s3t1s")
+centered = false
+
+[node name="whiteKing" type="AnimatedSprite2D" parent="." unique_id=1762917976]
+position = Vector2(448, 0)
+sprite_frames = ExtResource("9_15y27")
+centered = false
+
+[node name="whiteKnight" type="AnimatedSprite2D" parent="." unique_id=1544301197]
+position = Vector2(512, 0)
+sprite_frames = ExtResource("10_trs74")
+centered = false
+
+[node name="whitePawn" type="AnimatedSprite2D" parent="." unique_id=1004238467]
+position = Vector2(576, 0)
+sprite_frames = ExtResource("11_r7mns")
+centered = false
+
+[node name="whiteQueen" type="AnimatedSprite2D" parent="." unique_id=25262877]
+position = Vector2(640, 0)
+sprite_frames = ExtResource("12_7kt1i")
+centered = false
+
+[node name="whiteRook" type="AnimatedSprite2D" parent="." unique_id=2033651058]
+position = Vector2(704, 0)
+sprite_frames = ExtResource("13_biv2x")
+centered = false

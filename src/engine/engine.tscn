@@ -1,6 +1,6 @@
 [gd_scene format=3 uid="uid://dl4s6x8gtvxk8"]
 
-[ext_resource type="Script" uid="uid://cd4ludxob57xt" path="res://engine/Engine.gd" id="1"]
+[ext_resource type="Script" uid="uid://0w13rofy37mr" path="res://engine/engine.gd" id="1"]
 [ext_resource type="PackedScene" uid="uid://1ggxtsr4hbwc" path="res://engine/UDPClient.tscn" id="2"]
 
 [node name="Engine" type="Node" unique_id=1985784787]

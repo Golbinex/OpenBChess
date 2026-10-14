@@ -13,21 +13,10 @@ func get_piece(key = "P", side = "W"):
 	p.position = Vector2(0, 0)
 	return p
 
-
-func promote(p: Piece, promote_to = "q"):
-	p.key = promote_to.to_upper()
-	var parent = p.obj.get_parent()
-	p.obj.queue_free() # Delete pawn
-	# Now add the new piece in place of the pawn
-	p.obj = get_piece(p.key, p.side)
-	parent.add_child(p.obj)
-
-
 # Edit this to start in the game or as a Tool script when the scene is loaded
 func _ready():
 #	setup()
 	visible = false # It is set up as an Autoloaded scene so want to hide it
-
 
 # This function is used in Tool script mode to set up the 12 Grid child nodes
 # It's useful when you change the child node type or the images to save time

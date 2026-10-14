@@ -1,0 +1,21 @@
+[gd_scene format=3 uid="uid://bwsmlcwmcli63"]
+
+[ext_resource type="Script" uid="uid://bh76wiontktcg" path="res://square.gd" id="1_2eeqm"]
+
+[node name="Square" type="Area2D" unique_id=647990973]
+script = ExtResource("1_2eeqm")
+
+[node name="CollisionPolygon2D" type="CollisionPolygon2D" parent="." unique_id=1738806377]
+
+[node name="Polygon2D" type="Polygon2D" parent="." unique_id=231168828]
+visible = false
+
+[node name="Line2D" type="Line2D" parent="." unique_id=1174894302]
+visible = false
+closed = true
+width = 5.0
+
+[node name="Timer" type="Timer" parent="." unique_id=1138799847]
+wait_time = 0.08
+
+[connection signal="timeout" from="Timer" to="." method="_on_timer_timeout"]

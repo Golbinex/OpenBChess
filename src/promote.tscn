@@ -1,6 +1,6 @@
 [gd_scene format=3 uid="uid://bdhocrqwtjdsh"]
 
-[ext_resource type="Script" uid="uid://c4x0rd6apruvv" path="res://Promote.gd" id="1"]
+[ext_resource type="Script" uid="uid://cmpcy32ilx8xp" path="res://promote.gd" id="1"]
 
 [node name="Promote" type="PopupPanel" unique_id=1276655546]
 oversampling_override = 1.0

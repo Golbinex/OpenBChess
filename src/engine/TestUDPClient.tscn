@@ -1,6 +1,6 @@
 [gd_scene format=3 uid="uid://b67yjfr1mmxx6"]
 
-[ext_resource type="Script" uid="uid://da228bmt37po4" path="res://engine/TestUDPClient.gd" id="1"]
+[ext_resource type="Script" uid="uid://d043y57m44vjs" path="res://engine/TestUDPClient.gd" id="1"]
 [ext_resource type="PackedScene" uid="uid://1ggxtsr4hbwc" path="res://engine/UDPClient.tscn" id="2"]
 
 [node name="TestUDPClient" type="Control" unique_id=816973027]

@@ -1,0 +1,35 @@
+[gd_scene format=3 uid="uid://c8usdvp4rr7d2"]
+
+[ext_resource type="Script" uid="uid://hbylgu1p5mn2" path="res://board.gd" id="1"]
+[ext_resource type="Texture2D" uid="uid://sat4bkkaaqhh" path="res://assets/BChess/sprites/board.png" id="2_3ng4l"]
+[ext_resource type="PackedScene" uid="uid://bwsmlcwmcli63" path="res://square.tscn" id="2_hq5ls"]
+[ext_resource type="PackedScene" uid="uid://2wgt8x3n7aqt" path="res://piece.tscn" id="3_k0g80"]
+
+[node name="Board" type="MarginContainer" unique_id=577728127]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1")
+text_color = Color(1, 1, 0.25882354, 1)
+square_scene = ExtResource("2_hq5ls")
+piece_scene = ExtResource("3_k0g80")
+
+[node name="Grid" type="GridContainer" parent="." unique_id=1092644313]
+visible = false
+layout_mode = 2
+size_flags_horizontal = 0
+size_flags_vertical = 0
+theme_override_constants/h_separation = 0
+theme_override_constants/v_separation = 0
+columns = 8
+
+[node name="SquareLayer" type="Node2D" parent="." unique_id=474725368]
+
+[node name="PieceLayer" type="Node2D" parent="." unique_id=1249114422]
+
+[node name="Sprite2D" type="Sprite2D" parent="." unique_id=263950296]
+show_behind_parent = true
+texture = ExtResource("2_3ng4l")
+centered = false

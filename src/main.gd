@@ -4,12 +4,14 @@ extends Control
 @onready var fd = $c/FileDialog
 @onready var promote = $c/Promote
 @onready var board = $VBox/Board
+@onready var settings = $c/Settings
 
-var pid = 0
-var moves : PackedStringArray = []
+var move_checker: MoveChecker
+
+var fen_move: String
 var long_moves : PackedStringArray = []
 var selected_piece : Piece
-var fen = ""
+var fen: String
 var show_suggested_move = true
 var white_next = true
 var pgn_moves = []
@@ -23,35 +25,32 @@ enum { IDLE, CONNECTING, STARTING, PLAYER_TURN, ENGINE_TURN, PLAYER_WIN, ENGINE_
 enum { CONNECT, NEW_GAME, DONE, ERROR, MOVE }
 
 func _ready():
-	board.connect("clicked", Callable(self, "piece_clicked"))
-	board.connect("unclicked", Callable(self, "piece_unclicked"))
-	board.connect("moved", Callable(self, "mouse_moved"))
-	connect("mouse_entered", Callable(self, "mouse_entered"))
-	board.connect("taken", Callable(self, "stow_taken_piece"))
+	board.connect("piece_moved", try_to_make_a_move)
 	promote.connect("promotion_picked", Callable(self, "promote_pawn"))
 	show_transport_buttons(false)
 	show_last_move()
 	ponder() # Hide it
-
+	move_checker = board.move_checker
+	state = IDLE
+	# TEST
+	handle_state(NEW_GAME)
 
 func handle_state(event, msg = ""):
 	match state:
 		IDLE:
 			match event:
 				CONNECT:
-					var status = engine.start_udp_server()
+					var status = engine.start_engine()
 					if status.started:
-						# Need some delay before connecting is possible
-						await get_tree().create_timer(0.5).timeout
-						engine.send_packet("uci")
+						engine.send_command("uci")
 						state = CONNECTING
 					else:
 						alert(status.error)
 				NEW_GAME:
 					# Keep piece arrangement and move counts.
-					if engine.server_pid > 0:
-						engine.send_packet("ucinewgame")
-						engine.send_packet("isready")
+					if engine.engine_pid > 0:
+						engine.send_command("ucinewgame")
+						engine.send_command("isready")
 						state = STARTING
 					else:
 						handle_state(CONNECT)
@@ -59,6 +58,7 @@ func handle_state(event, msg = ""):
 			match event:
 				DONE:
 					if msg == "uciok":
+						print("state idle")
 						state = IDLE
 						handle_state(NEW_GAME)
 				ERROR:
@@ -68,6 +68,7 @@ func handle_state(event, msg = ""):
 			match event:
 				DONE:
 					if msg == "readyok":
+						board.game_started()
 						if white_next:
 							alert("White to begin")
 							state = PLAYER_TURN
@@ -81,6 +82,7 @@ func handle_state(event, msg = ""):
 			match event:
 				DONE:
 					print(msg)
+					print("hello")
 				MOVE:
 					ponder()
 					# msg should contain the player move
@@ -89,48 +91,44 @@ func handle_state(event, msg = ""):
 		ENGINE_TURN:
 			match event:
 				DONE:
+					# Client allowed illegal move
+					if msg.begins_with("info string CRITICAL ERROR"):
+						alert("Please report this to developer:\n" + msg, 0, Vector2i(600, 200))
+						state = IDLE
 					var move = get_best_move(msg)
-					if move != "":
-						move_engine_piece(move)
+					# Engine can't make any move, player wins
+					if move == "(none)":
+						state = PLAYER_WIN
+						handle_state(DONE)
+					elif move != "":
+						await move_engine_piece(move)
 						show_last_move(move)
 						state = PLAYER_TURN
-					# Don't print the info spam
-					if !msg.begins_with("info"):
-						print(msg)
+						board.update_selectable_squares()
+						# Player can't do any moves even though king is not in check
+						if board.possible_moves == 0:
+							state = ENGINE_WIN
+							handle_state(DONE)
 		PLAYER_WIN:
 			match event:
 				DONE:
-					print("Player won")
+					alert("Check Mate! Player won")
 					state = IDLE
 					set_next_color()
 		ENGINE_WIN:
 			match event:
 				DONE:
-					print("Engine won")
+					alert("Check Mate! Engine won")
 					state = IDLE
 					set_next_color()
 
-
 func prompt_engine(move = ""):
-	fen = board.get_fen("b")
-	engine.send_packet("position fen %s moves %s" % [fen, move])
-	engine.send_packet("go movetime 1000")
+	engine.send_command("position fen %s moves %s" % [fen, move])
+	engine.send_command("go movetime 1000")
 	state = ENGINE_TURN
-
-
-func stow_taken_piece(p: Piece):
-	var tex = TextureRect.new()
-	tex.texture = p.obj.texture
-	if p.side == "B":
-		$VBox/BlackPieces.add_child(tex)
-	else:
-		$VBox/WhitePieces.add_child(tex)
-	p.queue_free()
-
 
 func show_last_move(move = ""):
 	$VBox/HBox/Grid/LastMove.text = move
-
 
 func get_best_move(s: String):
 	var move = ""
@@ -152,7 +150,6 @@ func get_best_move(s: String):
 			ponder(tokens[3])
 	return move
 
-
 # The engine sends a suggested next move for the player tagged with "ponder"
 # So we display this move to the player in the UI or hide the UI elements
 func ponder(move = ""):
@@ -162,91 +159,77 @@ func ponder(move = ""):
 		$VBox/HBox/VBox/Ponder.modulate.a = 1.0
 		$VBox/HBox/VBox/Ponder/Move.text = move
 
-
 func move_engine_piece(move: String):
+	# Engine can't move, player wins
 	var pos1 = board.move_to_position(move.substr(0, 2))
 	var p: Piece = board.get_piece_in_grid(pos1.x, pos1.y)
-	p.new_pos = board.move_to_position(move.substr(2, 2))
+	p.new_board_position = board.move_to_position(move.substr(2, 2))
 	if move[move.length() - 1] in "rnbq":
 		promote_to = move[move.length() - 1]
 	try_to_make_a_move(p)
 
-
-func alert(txt, duration = 1.0):
-	$c/Alert.open(txt, duration)
-
-
-# This is called after release of the mouse button and when the mouse
-# has crossed the Grid border so as to release any selected piece
-func mouse_entered():
-	return_piece(selected_piece)
-
-
-func piece_clicked(piece):
-	selected_piece = piece
-	# Need to ensure that piece displays above all others when moved
-	# The z_index gets reset when we settle the piece back into
-	# it's resting position
-	piece.obj.z_index = 1
-	print("Board clicked ", selected_piece)
-
-
-func piece_unclicked(piece):
-	show_transport_buttons(false)
-	try_to_make_a_move(piece, false)
-
+func alert(txt, duration = 1.0, window_size = Vector2i(200, 50)):
+	$c/Alert.open(txt, duration, window_size)
 
 func try_to_make_a_move(piece: Piece, non_player_move = true):
-	var info = board.get_position_info(piece, non_player_move)
+	fen = board.get_fen("b" if non_player_move else "w")
+	var info = move_checker.check_move(piece)
 	# When Idle, we are not playing a game so the user may move the black pieces
-	print("try_to_make_a_move : ", info.ok)
 	# Try to drop the piece
 	# Also check for castling and passant
 	var ok_to_move = false
 	var rook = null
 	if info.ok:
-		if info.piece != null:
+		if info.attacked_piece != null:
 			ok_to_move = true
 		else:
-			if info.passant and board.passant_pawn.pos.x == piece.new_pos.x:
-				print("passant")
+			if info.passant:
+				print("passant: ", board.passant_pawn.board_position.x, " attacking pawn: ", piece.new_board_position.x)
+			if info.passant and board.passant_pawn.board_position.x == piece.new_board_position.x:
 				board.take_piece(board.passant_pawn)
+				board.passant_pawn = null
 				ok_to_move = true
 			else:
-				ok_to_move = piece.key != "P" or piece.pos.x == piece.new_pos.x
+				ok_to_move = piece.key != "P" or piece.board_position.x == piece.new_board_position.x
 			if info.castling:
 				# Get rook
 				var rx
-				if piece.new_pos.x == 2:
+				if piece.new_board_position.x == 2:
 					rx = 3
-					rook = board.get_piece_in_grid(0, piece.new_pos.y)
+					rook = board.get_piece_in_grid(0, piece.new_board_position.y)
 				else:
-					rook = board.get_piece_in_grid(7, piece.new_pos.y)
+					rook = board.get_piece_in_grid(7, piece.new_board_position.y)
 					rx = 5
 				if rook != null and rook.key == "R" and rook.tagged and rook.side == piece.side:
-					ok_to_move = !board.is_checked(rx, rook.pos.y, rook.side)
+					ok_to_move = !move_checker.is_checked(rx, rook.board_position.y, rook.side)
 					if ok_to_move:
 						# Move rook
-						rook.new_pos = Vector2(rx, rook.pos.y)
+						rook.new_board_position = Vector2i(rx, rook.board_position.y)
 					else:
 						alert("Check")
 				else:
 					ok_to_move = false
-	if info.piece != null:
-		ok_to_move = ok_to_move and info.piece.key != "K"
+	if info.attacked_piece != null:
+		ok_to_move = ok_to_move and info.attacked_piece.key != "K"
 	if ok_to_move:
 		if piece.key == "K":
-			if board.is_king_checked(piece).checked:
+			if move_checker.is_king_checked(piece).checked:
 				alert("Cannot move into check position!")
 			else:
 				if rook != null:
 					move_piece(rook, false)
-				board.take_piece(info.piece)
+				board.take_piece(info.attacked_piece)
 				move_piece(piece)
+		elif move_checker.is_king_checked(piece, false).checked :
+			alert("Your king is in check!")
 		else:
-			board.take_piece(info.piece)
+			if piece.key == "P":
+				await check_promotion(piece)
+			board.take_piece(info.attacked_piece)
 			move_piece(piece)
-			var status = board.is_king_checked(piece)
+			if info.tag_passant:
+				board.tag_piece(board.get_grid_index(piece.board_position.x, piece.board_position.y))
+			var status = move_checker.is_king_checked(piece)
 			if status.mated:
 				alert("Check Mate!")
 				if status.side == "B":
@@ -258,51 +241,39 @@ func try_to_make_a_move(piece: Piece, non_player_move = true):
 				if status.checked:
 					alert("Check")
 	# Settle the piece precisely into position and reset it's z_order
-	return_piece(piece)
-
+	#return_piece(piece)
 
 func move_piece(piece: Piece, not_castling = true):
 	set_next_color(piece.side == "B")
-	var pos = [piece.pos, piece.new_pos]
-	board.move_piece(piece, state == ENGINE_TURN)
+	var pos = [piece.board_position, piece.new_board_position]
+	board.move_piece(piece)
 	if state == PLAYER_TURN:
-		moves.append(board.position_to_move(pos[0]) + board.position_to_move(pos[1]))
+		fen_move = (board.position_to_move(pos[0]) + board.position_to_move(pos[1]))
+		if piece.promoted:
+			fen_move += piece.key.to_lower()
+			piece.promoted = false
 		if not_castling:
 			# When castling there may be 2 moves to convey rook <> king
-			handle_state(MOVE, " ".join(moves)) 
-			moves = []
+			handle_state(MOVE, " " + fen_move)
 
-
-func mouse_moved(pos):
-	if selected_piece != null:
-		selected_piece.obj.position = pos - Vector2(board.square_width, board.square_width) / 2.0
-
-
-# Return the piece to it's base position after being moved via mouse
-# Reset it's z_order and test for the situation of a pawn promotion
-func return_piece(piece: Piece):
-	if piece != null:
-		piece.obj.position = Vector2(0, 0)
-		piece.obj.z_index = 0
-		selected_piece = null
-		if piece.key == "P":
-			if piece.side == "B" and piece.pos.y == 7 or piece.side == "W" and piece.pos.y == 0:
-				if promote_to == "":
-					# Prompt player
-					promote.open(piece)
-				else:
-					Pieces.promote(piece, promote_to)
-			promote_to = ""
-
+# Check for promotion possibility
+func check_promotion(piece: Piece):
+	if piece.side == "B" and piece.new_board_position.y == 7 or piece.side == "W" and piece.new_board_position.y == 0:
+		if promote_to == "":
+			# Prompt player
+			promote.open(piece)
+			await promote.promotion_picked
+		else:
+			piece.promote(promote_to)
+	promote_to = ""
 
 func promote_pawn(p: Piece, pick: String):
-	Pieces.promote(p, pick)
-
+	p.promote(pick)
+	board.army_value[p.side] += p.value - 1
 
 func _on_Start_button_down():
 	state = IDLE
 	handle_state(NEW_GAME)
-
 
 func _on_Engine_done(ok, packet):
 	if ok:
@@ -310,21 +281,17 @@ func _on_Engine_done(ok, packet):
 	else:
 		handle_state(ERROR)
 
-
 func _on_CheckBox_toggled(button_pressed):
 	show_suggested_move = button_pressed
 
-
 func _on_Board_fullmove(n):
 	$VBox/HBox/Grid/Moves.text = str(n)
-
 
 func _on_Board_halfmove(n):
 	$VBox/HBox/Grid/HalfMoves.text = str(n)
 	if n == 50:
 		alert("It's a draw!")
 		state = IDLE
-
 
 func reset_board():
 	if !board.cleared:
@@ -339,40 +306,30 @@ func reset_board():
 		state = IDLE
 		board.clear_board()
 		board.setup_pieces()
-		for node in $VBox/WhitePieces.get_children():
-			node.queue_free()
-		for node in $VBox/BlackPieces.get_children():
-			node.queue_free()
 	move_index = 0
 	update_count(move_index)
 	set_next_color()
 
-
 func _on_Reset_button_down():
 	reset_board()
 
-
 func _on_Flip_button_down():
 	set_next_color(!white_next)
-
 
 func set_next_color(is_white = true):
 	white_next = is_white
 	$VBox/HBox/Menu/Next/Color.color = Color.WHITE if white_next else Color.BLACK
 
-
 func _on_Load_button_down():
-	fd.mode = FileDialog.FILE_MODE_OPEN_FILE
+	fd.file_mode = FileDialog.FILE_MODE_OPEN_FILE
 	fd.popup_centered()
-
 
 func _on_Save_button_down():
-	fd.mode = FileDialog.FILE_MODE_SAVE_FILE
+	fd.file_mode = FileDialog.FILE_MODE_SAVE_FILE
 	fd.popup_centered()
 
-
 func _on_FileDialog_file_selected(path: String):
-	if fd.mode == FileDialog.FILE_MODE_OPEN_FILE:
+	if fd.file_mode == FileDialog.FILE_MODE_OPEN_FILE:
 		var file = FileAccess.open(path, FileAccess.READ)
 		#file.open(path, File.READ)
 		var content = file.get_as_text()
@@ -383,7 +340,6 @@ func _on_FileDialog_file_selected(path: String):
 			fen_from_file(content)
 	else:
 		save_file(board.get_fen("w" if white_next else "b"), path)
-
 
 # Extract the moves from the first game in a Portable Game Notation (PGN) text
 func pgn_from_file(content: String) -> String:
@@ -402,7 +358,6 @@ func pgn_from_file(content: String) -> String:
 			pgn.append(line.strip_edges())
 	return " ".join(pgn)
 
-
 func fen_from_file(content: String):
 	var parts = content.split(",")
 	# Find the FEN string
@@ -418,7 +373,6 @@ func fen_from_file(content: String):
 	else:
 		alert("Invalid FEN string")
 
-
 func is_valid_fen(_fen: String):
 	var n = 0
 	var rows = 1
@@ -433,13 +387,11 @@ func is_valid_fen(_fen: String):
 			n += 1
 	return n == 64 and rows == 8
 
-
 func save_file(content, path):
 	var file = FileAccess.open(path, FileAccess.WRITE)
 	#file.open(path, File.WRITE)
 	file.store_string(content)
 	file.close()
-
 
 func set_pgn_moves(_moves):
 	_moves = _moves.split(" ")
@@ -452,22 +404,17 @@ func set_pgn_moves(_moves):
 	show_transport_buttons()
 	reset_board()
 
-
 func update_count(n: int):
 	$VBox/HBox/Options/TB/Count.text = "%d/%d" % [n, pgn_moves.size()]
-
 
 func show_transport_buttons(show_buttons = true):
 	$VBox/HBox/Options/TB.modulate.a = 1.0 if show_buttons else 0.0
 
-
 func _on_Begin_button_down():
 	reset_board()
 
-
 func _on_Forward_button_down():
 	step_forward()
-
 
 func step_forward():
 	if move_index >= pgn_moves.size():
@@ -480,7 +427,6 @@ func step_forward():
 	move_index += 1
 	update_count(move_index)
 
-
 var stepping = false
 
 func _on_End_button_down():
@@ -488,13 +434,17 @@ func _on_End_button_down():
 	while stepping and pgn_moves.size() > move_index:
 		step_forward()
 
-
 func _on_End_button_up():
 	stepping = false
-
 
 func _on_engine_done(ok, packet):
 	if ok:
 		handle_state(DONE, packet)
 	else:
 		handle_state(ERROR)
+
+# Popup options
+func _unhandled_input(event):
+	if event is InputEventKey:
+		if event.pressed and event.keycode == KEY_ESCAPE:
+			settings.popup_centered()
